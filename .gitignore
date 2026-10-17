@@ -1,0 +1,11 @@
+# Zajedničko za frontend/ i backend/
+node_modules/
+.env
+.env.*
+!.env.example
+.next/
+*.tsbuildinfo
+.DS_Store
+npm-debug.log*
+backend/uploads/*
+!backend/uploads/.gitkeep

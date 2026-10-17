@@ -1,0 +1,20 @@
+-- Početni podaci: samo najčešći žanrovi (ploče se dodaju kroz admin panel)
+INSERT IGNORE INTO genres (name) VALUES
+  ('Rock'),
+  ('Pop'),
+  ('Jazz'),
+  ('Blues'),
+  ('Soul'),
+  ('Funk'),
+  ('Disco'),
+  ('Elektronska'),
+  ('Hip-hop'),
+  ('Klasična'),
+  ('Metal'),
+  ('Punk'),
+  ('Novi talas'),
+  ('Narodna'),
+  ('Zabavna'),
+  ('Reggae'),
+  ('Folk'),
+  ('Soundtrack');
