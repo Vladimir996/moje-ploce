@@ -73,11 +73,24 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         </Suspense>
       </div>
 
-      <p className="mt-6 text-sm text-ink-500">
-        {records.total === stats.records
-          ? `Prikazano ${records.total} ${plural(records.total, "ploča", "ploče", "ploča")}`
-          : `Pronađeno ${records.total} od ${stats.records}`}
-      </p>
+      {records.items.length > 0 && (
+        <p className="mt-6 text-sm text-ink-500">
+          Prikazano{" "}
+          <strong className="font-semibold text-ink-800">
+            {(records.page - 1) * pageSize + 1}–{(records.page - 1) * pageSize + records.items.length}
+          </strong>{" "}
+          {records.total === stats.records ? (
+            <>
+              od ukupno <strong className="font-semibold text-ink-800">{records.total}</strong>
+            </>
+          ) : (
+            <>
+              od <strong className="font-semibold text-ink-800">{records.total}</strong> pronađenih (ukupno{" "}
+              {stats.records})
+            </>
+          )}
+        </p>
+      )}
 
       {records.items.length === 0 ? (
         <EmptyState hasAny={stats.records > 0} isAdmin={Boolean(token)} />
