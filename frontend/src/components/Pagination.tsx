@@ -27,31 +27,61 @@ export default function Pagination({
     .sort((a, b) => a - b);
 
   const base = "flex h-9 min-w-9 items-center justify-center rounded-full px-3 text-sm font-medium";
+  const arrow =
+    "flex h-11 w-11 items-center justify-center rounded-full border border-ink-700/15 bg-paper-50 text-lg shadow-sm";
 
   return (
-    <nav className="mt-12 flex flex-wrap items-center justify-center gap-1.5" aria-label="Stranice">
-      {page > 1 && (
-        <Link href={href(page - 1)} className={`${base} hover:bg-paper-200`}>
-          ← Prethodna
-        </Link>
-      )}
-      {numbers.map((n, i) => (
-        <span key={n} className="flex items-center gap-1.5">
-          {i > 0 && n - numbers[i - 1] > 1 && <span className="text-ink-500">…</span>}
-          <Link
-            href={href(n)}
-            aria-current={n === page ? "page" : undefined}
-            className={`${base} ${n === page ? "bg-ink-950 text-paper-50" : "hover:bg-paper-200"}`}
-          >
-            {n}
+    <nav className="mt-10 sm:mt-12" aria-label="Stranice">
+      {/* Telefon: kompaktno — strelice dovoljno velike za palac + "Strana X od Y" */}
+      <div className="flex items-center justify-between gap-3 sm:hidden">
+        {page > 1 ? (
+          <Link href={href(page - 1)} className={arrow} aria-label="Prethodna strana">
+            ←
           </Link>
+        ) : (
+          <span className={`${arrow} opacity-30`} aria-hidden>
+            ←
+          </span>
+        )}
+        <span className="text-sm text-ink-700">
+          Strana <strong className="text-ink-950">{page}</strong> od {pages}
         </span>
-      ))}
-      {page < pages && (
-        <Link href={href(page + 1)} className={`${base} hover:bg-paper-200`}>
-          Sljedeća →
-        </Link>
-      )}
+        {page < pages ? (
+          <Link href={href(page + 1)} className={arrow} aria-label="Sljedeća strana">
+            →
+          </Link>
+        ) : (
+          <span className={`${arrow} opacity-30`} aria-hidden>
+            →
+          </span>
+        )}
+      </div>
+
+      {/* Veći ekrani: brojevi strana */}
+      <div className="hidden flex-wrap items-center justify-center gap-1.5 sm:flex">
+        {page > 1 && (
+          <Link href={href(page - 1)} className={`${base} hover:bg-paper-200`}>
+            ← Prethodna
+          </Link>
+        )}
+        {numbers.map((n, i) => (
+          <span key={n} className="flex items-center gap-1.5">
+            {i > 0 && n - numbers[i - 1] > 1 && <span className="text-ink-500">…</span>}
+            <Link
+              href={href(n)}
+              aria-current={n === page ? "page" : undefined}
+              className={`${base} ${n === page ? "bg-ink-950 text-paper-50" : "hover:bg-paper-200"}`}
+            >
+              {n}
+            </Link>
+          </span>
+        ))}
+        {page < pages && (
+          <Link href={href(page + 1)} className={`${base} hover:bg-paper-200`}>
+            Sljedeća →
+          </Link>
+        )}
+      </div>
     </nav>
   );
 }

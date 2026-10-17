@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import { getAdminToken, getArtists, getGenres, getRecords, getStats } from "@/lib/api";
-import { PAGE_SIZE } from "@/lib/constants";
+import { PAGE_SIZE, PAGE_SIZE_MOBILE } from "@/lib/constants";
 import { formatDate, plural } from "@/lib/format";
 import Filters from "@/components/Filters";
 import RecordCard from "@/components/RecordCard";
@@ -13,8 +14,11 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const sp = await searchParams;
   const get = (key: string) => (typeof sp[key] === "string" ? (sp[key] as string) : "");
 
+  // Telefon dobija manje ploča po strani (5 redova po 2 kartice)
+  const pageSize = (await isMobile()) ? PAGE_SIZE_MOBILE : PAGE_SIZE;
+
   // URL parametri (na našem jeziku) → parametri backend API-ja
-  const apiParams = new URLSearchParams({ limit: String(PAGE_SIZE), page: get("strana") || "1" });
+  const apiParams = new URLSearchParams({ limit: String(pageSize), page: get("strana") || "1" });
   if (get("q")) apiParams.set("q", get("q"));
   if (get("izvodjac")) apiParams.set("artist", get("izvodjac"));
   if (get("zanr")) apiParams.set("genre", get("zanr"));
@@ -90,6 +94,15 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       <Pagination page={records.page} pages={records.pages} searchParams={sp} />
     </div>
   );
+}
+
+// Server ne zna širinu ekrana, pa se telefon prepoznaje po zaglavljima zahtjeva
+// (Sec-CH-UA-Mobile šalju Chrome/Edge na Androidu, ostali se prepoznaju po User-Agent-u).
+// Tablet (iPad, Android tablet bez "Mobile") dobija desktop raspored.
+async function isMobile(): Promise<boolean> {
+  const h = await headers();
+  if (h.get("sec-ch-ua-mobile") === "?1") return true;
+  return /Mobi|iPhone|iPod|Android.+Mobile|Windows Phone/i.test(h.get("user-agent") ?? "");
 }
 
 function Stat({ value, label }: { value: number | string; label: string }) {

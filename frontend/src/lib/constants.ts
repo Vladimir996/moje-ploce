@@ -29,3 +29,4 @@ export const SORTS = [
 ] as const;
 
 export const PAGE_SIZE = 25;
+export const PAGE_SIZE_MOBILE = 10;
