@@ -36,7 +36,7 @@ Frontend se povezuje sa backend-om preko `frontend/.env.local` (`API_URL`), a ni
 - Filteri: izvođač, žanr, format, decenija izdanja, samo omiljene
 - Sortiranje: datum dodavanja, godina izdanja, naziv, izvođač
 - Filteri su u URL-u (`/?izvodjac=3&decenija=1970`) — link se može sačuvati/podijeliti
-- Statistika: broj ploča, izvođača, raspon godina; paginacija po 24
+- Statistika: broj ploča, izvođača, raspon godina; paginacija po 25
 
 **Detalji ploče (`/ploce/[id]`)**
 - Veliki omot, izvođač (klik → filtrira kolekciju po njemu), godina, izdavač, kataloški broj, zemlja, format, brzina

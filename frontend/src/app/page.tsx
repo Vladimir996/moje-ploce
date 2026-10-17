@@ -78,9 +78,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       {records.items.length === 0 ? (
         <EmptyState hasAny={stats.records > 0} isAdmin={Boolean(token)} />
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5 xl:grid-cols-5">
           {records.items.map((record, i) => (
-            <div key={record.id} className="animate-fade-in" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
+            <div key={record.id} className="h-full animate-fade-in" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
               <RecordCard record={record} />
             </div>
           ))}

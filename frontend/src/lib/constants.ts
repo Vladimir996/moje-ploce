@@ -28,4 +28,4 @@ export const SORTS = [
   { value: "artist", label: "Izvođač (A–Ž)" },
 ] as const;
 
-export const PAGE_SIZE = 24;
+export const PAGE_SIZE = 25;
