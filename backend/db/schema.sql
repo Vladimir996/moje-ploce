@@ -9,13 +9,13 @@ CREATE TABLE IF NOT EXISTS artists (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(160) NOT NULL UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Žanrovi (rock, jazz, narodna...) — jedna ploča može imati više žanrova
 CREATE TABLE IF NOT EXISTS genres (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(60) NOT NULL UNIQUE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Ploče u kolekciji
 CREATE TABLE IF NOT EXISTS records (
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS records (
   INDEX idx_records_year (release_year),
   INDEX idx_records_title (title),
   INDEX idx_records_discogs (discogs_id)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS record_genres (
   record_id INT UNSIGNED NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS record_genres (
     FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE,
   CONSTRAINT fk_record_genres_genre
     FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Spisak pjesama po stranama (A1, A2, B1...)
 CREATE TABLE IF NOT EXISTS tracks (
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS tracks (
   CONSTRAINT fk_tracks_record
     FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE,
   INDEX idx_tracks_record (record_id, sort_order)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Administratorski nalozi (za dodavanje, izmjenu i brisanje ploča)
 CREATE TABLE IF NOT EXISTS admins (
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS admins (
   username VARCHAR(60) NOT NULL UNIQUE,
   password_hash VARCHAR(100) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Log svake značajnije akcije nad API-jem (audit trag)
 CREATE TABLE IF NOT EXISTS activity_logs (
@@ -94,4 +94,4 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_activity_logs_action (action),
   INDEX idx_activity_logs_entity (entity_type, entity_id)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

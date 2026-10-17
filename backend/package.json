@@ -7,7 +7,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:migrate": "node db/migrate.js",
-    "db:create-admin": "node db/create-admin.js"
+    "db:create-admin": "node db/create-admin.js",
+    "db:transfer": "node db/transfer.js"
   },
   "author": "",
   "license": "ISC",
