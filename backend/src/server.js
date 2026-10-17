@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 
+const pool = require("./db");
 const requestLogger = require("./middleware/requestLogger");
 const recordsRouter = require("./routes/records");
 const catalogRouter = require("./routes/catalog");
@@ -41,6 +42,14 @@ app.use((err, req, res, next) => {
 });
 
 const port = Number(process.env.PORT) || 4000;
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Backend sluša na http://localhost:${port}`);
+
+  // Odmah provjeri bazu, da se u logu (npr. na Render-u) vidi da li su DB_* varijable dobre
+  try {
+    await pool.query("SELECT 1");
+    console.log(`Baza povezana: ${pool.describe}`);
+  } catch (err) {
+    console.error(`Baza NIJE dostupna (${pool.describe}): ${err.code ?? ""} ${err.message}`);
+  }
 });
