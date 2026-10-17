@@ -17,6 +17,7 @@ export default function RecordCard({ record }: { record: VinylRecord }) {
         />
         <Cover
           src={record.coverUrl}
+          width={300}
           alt={`${record.artist.name} — ${record.title}`}
           className="relative h-full w-full rounded-xl shadow-md ring-1 ring-ink-950/10 transition-transform duration-500 ease-out group-hover:-translate-x-[3%]"
         />

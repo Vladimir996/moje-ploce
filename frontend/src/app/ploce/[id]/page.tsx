@@ -51,6 +51,7 @@ export default async function RecordPage({ params }: Props) {
             <span className="vinyl-disc absolute inset-[3%] translate-x-[18%]" aria-hidden />
             <Cover
               src={record.coverUrl}
+              width={600}
               alt={`${record.artist.name} — ${record.title}`}
               className="relative h-full w-full rounded-2xl shadow-xl ring-1 ring-ink-950/10"
             />

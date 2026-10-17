@@ -25,7 +25,7 @@ npm install
 npm run dev
 ```
 
-Frontend se povezuje sa backend-om preko `frontend/.env.local` (`API_URL`), a nikad direktno iz browsera — sve ide kroz Next.js server komponente i API rute kao proxy. I omoti se serviraju kroz frontend (`/covers/...` → rewrite na backend `/api/uploads/...`).
+Frontend se povezuje sa backend-om preko `frontend/.env.local` (`API_URL`), a nikad direktno iz browsera — sve ide kroz Next.js server komponente i API rute kao proxy. Omoti se čuvaju na [Cloudinary](https://cloudinary.com)-ju (`CLOUDINARY_URL` u `backend/.env`), a u bazi je samo njihov link.
 
 ## Šta aplikacija ima
 
@@ -46,7 +46,7 @@ Frontend se povezuje sa backend-om preko `frontend/.env.local` (`API_URL`), a ni
 - Za prijavljenog admina: cijena, datum i mjesto kupovine, privatne bilješke + dugmad Izmijeni / Omiljena / Obriši
 
 **Admin (`/admin/login`, `/admin/nova`, `/admin/ploce/[id]`)**
-- **Uvoz sa Discogs-a**: pretraga po kataloškom broju, barkodu ili izvođaču/nazivu (ili nalijepi link izdanja) → forma se sama popuni (naziv, izvođač, godina, izdavač, kataloški broj, zemlja, format, brzina, žanrovi, pjesme), a omot se skine na server. Upozorava ako to izdanje već imaš. Opciono `DISCOGS_TOKEN` u `backend/.env` za sličice u rezultatima i veći limit.
+- **Uvoz sa Discogs-a**: pretraga po kataloškom broju, barkodu ili izvođaču/nazivu (ili nalijepi link izdanja) → forma se sama popuni (naziv, izvođač, godina, izdavač, kataloški broj, zemlja, format, brzina, žanrovi, pjesme), a omot se prebaci na Cloudinary. Upozorava ako to izdanje već imaš. Opciono `DISCOGS_TOKEN` u `backend/.env` za sličice u rezultatima i veći limit.
 - Forma sa prijedlozima postojećih izvođača i žanrova (novi se kreiraju automatski)
 - Omot: otpremanje slike (do 8 MB) ili link do slike sa interneta
 - Dinamičan spisak pjesama (pozicija se sama predlaže: A1 → A2...)

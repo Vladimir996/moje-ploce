@@ -278,7 +278,7 @@ export default function RecordForm({
 
       <Section title="Omot">
         <div className="flex flex-col gap-5 sm:flex-row">
-          <Cover src={form.coverUrl || null} alt="Pregled omota" className="aspect-square w-40 shrink-0 rounded-xl" />
+          <Cover src={form.coverUrl || null} alt="Pregled omota" width={160} className="aspect-square w-40 shrink-0 rounded-xl" />
           <div className="min-w-0 flex-1 space-y-4">
             <Field label="Otpremi sliku (JPG, PNG, WEBP — do 8 MB)">
               <input

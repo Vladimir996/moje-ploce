@@ -1,65 +1,96 @@
-const fs = require("fs");
-const path = require("path");
 const crypto = require("crypto");
 const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
 const { USER_AGENT } = require("../lib/discogs");
 
-const UPLOADS_DIR = path.join(__dirname, "..", "..", "uploads");
-const ALLOWED_TYPES = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif" };
+// Omoti se čuvaju na Cloudinary-ju (CLOUDINARY_URL u .env), a u bazi je samo
+// njihov https link. Disk servera se ne koristi jer ga besplatni hosting
+// (npr. Render) briše pri svakom deploy-u.
+const FOLDER = process.env.CLOUDINARY_FOLDER || "ploce";
+const MAX_SIZE = 8 * 1024 * 1024;
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-// Omoti se čuvaju na disku backend-a (backend/uploads), a frontend ih
-// servira kao /covers/<fajl> (Next.js rewrite → /api/uploads/<fajl>).
+// Veće slike se smanjuju već pri otpremanju — omotu ne treba više od 1200px
+const UPLOAD_OPTIONS = {
+  folder: FOLDER,
+  resource_type: "image",
+  transformation: [{ width: 1200, height: 1200, crop: "limit" }],
+};
+
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOADS_DIR,
-    filename: (req, file, cb) => cb(null, crypto.randomBytes(12).toString("hex") + ALLOWED_TYPES[file.mimetype]),
-  }),
-  limits: { fileSize: 8 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_SIZE },
   fileFilter: (req, file, cb) => {
-    if (ALLOWED_TYPES[file.mimetype]) return cb(null, true);
+    if (ALLOWED_TYPES.includes(file.mimetype)) return cb(null, true);
     cb(Object.assign(new Error("Dozvoljene su samo slike (JPG, PNG, WEBP, GIF)."), { status: 400 }));
   },
 });
 
-function uploadCover(req, res) {
-  if (!req.file) return res.status(400).json({ error: "Fajl nije poslat (polje 'cover')." });
-  res.status(201).json({ ok: true, url: `/covers/${req.file.filename}` });
+function isConfigured() {
+  return Boolean(process.env.CLOUDINARY_URL);
 }
 
-// Skida sliku sa spoljnog linka (npr. Discogs) i čuva je kao lokalni omot.
-// Ime fajla je izvedeno iz linka, pa ponovni uvoz istog izdanja ne pravi kopije.
-async function saveRemoteCover(url) {
-  const baseName = "r-" + crypto.createHash("sha1").update(url).digest("hex").slice(0, 24);
-  const existing = Object.values(ALLOWED_TYPES)
-    .map((ext) => baseName + ext)
-    .find((name) => fs.existsSync(path.join(UPLOADS_DIR, name)));
-  if (existing) return `/covers/${existing}`;
-
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
-    signal: AbortSignal.timeout(15000),
+function uploadBuffer(buffer, options) {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream({ ...UPLOAD_OPTIONS, ...options }, (err, result) => (err ? reject(err) : resolve(result)))
+      .end(buffer);
   });
+}
+
+async function uploadCover(req, res) {
+  if (!isConfigured()) return res.status(503).json({ error: "Cloudinary nije podešen (CLOUDINARY_URL)." });
+  if (!req.file) return res.status(400).json({ error: "Fajl nije poslat (polje 'cover')." });
+
+  const result = await uploadBuffer(req.file.buffer, {});
+  res.status(201).json({ ok: true, url: result.secure_url });
+}
+
+// Skida sliku sa spoljnog linka (npr. Discogs) i šalje je na Cloudinary.
+// ID slike je izveden iz linka, pa ponovni uvoz istog izdanja ne pravi kopije.
+async function saveRemoteCover(url) {
+  if (!isConfigured()) throw new Error("Cloudinary nije podešen (CLOUDINARY_URL).");
+
+  const publicId = "r-" + crypto.createHash("sha1").update(url).digest("hex").slice(0, 24);
+  try {
+    const existing = await cloudinary.api.resource(`${FOLDER}/${publicId}`);
+    return existing.secure_url;
+  } catch (err) {
+    if (err.error?.http_code !== 404) throw err.error ?? err;
+  }
+
+  // Discogs traži User-Agent, zato sliku skida backend, a ne Cloudinary direktno
+  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
   const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
-  const ext = ALLOWED_TYPES[type];
-  if (!ext) throw new Error(`Nepodržan tip slike: ${type}`);
+  if (!ALLOWED_TYPES.includes(type)) throw new Error(`Nepodržan tip slike: ${type}`);
 
   const buffer = Buffer.from(await res.arrayBuffer());
-  if (buffer.length > 8 * 1024 * 1024) throw new Error("Slika je veća od 8 MB.");
+  if (buffer.length > MAX_SIZE) throw new Error("Slika je veća od 8 MB.");
 
-  const fileName = baseName + ext;
-  await fs.promises.writeFile(path.join(UPLOADS_DIR, fileName), buffer);
-  return `/covers/${fileName}`;
+  const result = await uploadBuffer(buffer, { public_id: publicId });
+  return result.secure_url;
 }
 
-// Briše lokalno sačuvan omot kad ploča promijeni omot ili bude obrisana.
-function deleteLocalCover(coverUrl) {
-  if (!coverUrl || !coverUrl.startsWith("/covers/")) return;
-  const fileName = path.basename(coverUrl);
-  fs.unlink(path.join(UPLOADS_DIR, fileName), (err) => {
-    if (err && err.code !== "ENOENT") console.error("Brisanje omota nije uspjelo:", err.message);
-  });
+// Iz linka https://res.cloudinary.com/<cloud>/image/upload/v123/ploce/abc.jpg → "ploce/abc".
+// Vraća null za slike koje nisu na našem Cloudinary nalogu (npr. nalijepljen spoljni link).
+function publicIdFromUrl(url) {
+  const cloudName = cloudinary.config().cloud_name;
+  const match = /^https:\/\/res\.cloudinary\.com\/([^/]+)\/image\/upload\/(?:v\d+\/)?(.+)\.[a-z0-9]+$/i.exec(url ?? "");
+  if (!match || match[1] !== cloudName) return null;
+  return match[2];
 }
 
-module.exports = { upload, uploadCover, saveRemoteCover, deleteLocalCover, UPLOADS_DIR };
+// Briše omot sa Cloudinary-ja kad ploča promijeni omot ili bude obrisana.
+async function deleteStoredCover(coverUrl) {
+  const publicId = publicIdFromUrl(coverUrl);
+  if (!publicId || !isConfigured()) return;
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (err) {
+    console.error("Brisanje omota nije uspjelo:", err.error?.message ?? err.message);
+  }
+}
+
+module.exports = { upload, uploadCover, saveRemoteCover, deleteStoredCover };

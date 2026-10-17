@@ -1,6 +1,6 @@
 const pool = require("../db");
 const { logActivity } = require("../lib/logger");
-const { deleteLocalCover } = require("./uploadsController");
+const { deleteStoredCover } = require("./uploadsController");
 
 const FORMATS = ["LP", "EP", "Singl", "Dupli LP", "Box set"];
 const SPEEDS = ["33", "45", "78"];
@@ -244,7 +244,7 @@ async function findOrCreate(connection, table, name) {
 async function deleteUnusedCover(coverUrl) {
   if (!coverUrl) return;
   const [rows] = await pool.query("SELECT 1 FROM records WHERE cover_url = ? LIMIT 1", [coverUrl]);
-  if (rows.length === 0) deleteLocalCover(coverUrl);
+  if (rows.length === 0) await deleteStoredCover(coverUrl);
 }
 
 async function deleteOrphanArtists(connection) {
@@ -291,7 +291,7 @@ function validateRecord(body) {
   }
 
   const coverUrl = text(b.coverUrl, 500);
-  if (coverUrl && !/^(https?:\/\/|\/covers\/)/.test(coverUrl)) {
+  if (coverUrl && !/^https?:\/\//.test(coverUrl)) {
     return { error: "Link omota mora počinjati sa http:// ili https://." };
   }
 

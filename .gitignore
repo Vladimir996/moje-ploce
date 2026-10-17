@@ -7,5 +7,3 @@ node_modules/
 *.tsbuildinfo
 .DS_Store
 npm-debug.log*
-backend/uploads/*
-!backend/uploads/.gitkeep

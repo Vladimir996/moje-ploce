@@ -25,7 +25,6 @@ src/
   controllers/        logika i SQL upiti
   middleware/         requireAdmin (JWT), requestLogger
   lib/logger.js       upis u activity_logs
-uploads/              otpremljeni omoti (nije u git-u)
 ```
 
 ## API
@@ -37,11 +36,10 @@ uploads/              otpremljeni omoti (nije u git-u)
 | POST | `/api/records` | 🔒 Nova ploča |
 | PUT | `/api/records/:id` | 🔒 Izmjena ploče |
 | PATCH | `/api/records/:id/favorite` | 🔒 Uključi/isključi omiljenu |
-| DELETE | `/api/records/:id` | 🔒 Brisanje (briše i lokalni omot) |
-| POST | `/api/uploads` | 🔒 Otpremanje omota (multipart, polje `cover`) → `{ url: "/covers/..." }` |
-| GET | `/api/uploads/:file` | Slika omota |
+| DELETE | `/api/records/:id` | 🔒 Brisanje (briše i omot sa Cloudinary-ja ako ga ne koristi druga ploča) |
+| POST | `/api/uploads` | 🔒 Otpremanje omota (multipart, polje `cover`) → `{ url: "https://res.cloudinary.com/..." }` |
 | GET | `/api/discogs/search` | 🔒 Pretraga Discogs-a: `q` + `by` (`catno` · `barcode` · `q`) |
-| GET | `/api/discogs/releases/:id` | 🔒 Izdanje prevedeno u polja forme + omot skinut u `uploads/` + `existingRecordId` ako već postoji |
+| GET | `/api/discogs/releases/:id` | 🔒 Izdanje prevedeno u polja forme + omot prebačen na Cloudinary + `existingRecordId` ako već postoji |
 | GET | `/api/artists` | Izvođači sa brojem ploča |
 | GET | `/api/genres` | Žanrovi sa brojem ploča |
 | GET | `/api/stats` | Statistika kolekcije |
@@ -57,4 +55,8 @@ Uvoz radi bez ikakvog podešavanja (Discogs dozvoljava 25 zahtjeva/min bez token
 
 Mapiranje: Discogs žanrovi se prevode u naše (`Electronic` → Elektronska, `Hip Hop` → Hip-hop...), stilovi se uzimaju ako odgovaraju postojećem žanru, a zemlje se prevode (`Yugoslavia` → Jugoslavija). Pravila su u `src/controllers/discogsController.js`.
 
-> Napomena za hosting: omoti se čuvaju na disku servera. Na besplatnim platformama sa privremenim diskom (npr. Render free) otpremljene slike nestaju pri redeploy-u — tamo je bolje koristiti link do slike.
+## Cloudinary (omoti)
+
+Omoti se ne čuvaju na disku servera (Render free ga briše pri svakom deploy-u), već na Cloudinary-ju — besplatni plan je više nego dovoljan. Podešavanje: Cloudinary Dashboard → **API environment variable** → upiši kao `CLOUDINARY_URL=cloudinary://...` u `.env`. `CLOUDINARY_FOLDER` odvaja slike (npr. `ploce-dev` lokalno, `ploce` u produkciji).
+
+Slike veće od 1200px se smanjuju pri otpremanju, a frontend kroz URL traži varijantu tačne veličine u WebP/AVIF formatu (`f_auto,q_auto,w_...`).

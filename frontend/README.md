@@ -20,4 +20,4 @@ src/components/               RecordCard, Filters, Pagination, Cover, admin/Reco
 src/lib/                      api (server fetch), types, constants, format
 ```
 
-Omoti se prikazuju kao `/covers/<fajl>` — `next.config.ts` to prosljeđuje na backend `/api/uploads/<fajl>`.
+Omoti su na Cloudinary-ju — `components/Cover.tsx` dodaje u link transformacije (`f_auto,q_auto,w_...`) da browser dobije sliku tačne veličine.
