@@ -20,16 +20,16 @@ const MATCH_LABELS: Record<string, string> = {
 type SearchBy = "catno" | "barcode" | "q";
 
 const SEARCH_MODES: { value: SearchBy; label: string; placeholder: string }[] = [
+  { value: "q", label: "Izvođač / naziv", placeholder: "npr. Bijelo dugme Eto baš hoću" },
   { value: "catno", label: "Kataloški broj", placeholder: "npr. LSVG 7" },
   { value: "barcode", label: "Barkod", placeholder: "brojevi ispod bar-koda" },
-  { value: "q", label: "Izvođač / naziv", placeholder: "npr. Bijelo dugme Eto baš hoću" },
 ];
 
 // Link tipa discogs.com/release/1155758-... ili discogs.com/sr/release/1155758
 const RELEASE_URL_RE = /discogs\.com\/(?:[a-z]{2}\/)?release\/(\d+)/i;
 
 export default function DiscogsImport({ onImport }: { onImport: (data: DiscogsImportData) => void }) {
-  const [by, setBy] = useState<SearchBy>("catno");
+  const [by, setBy] = useState<SearchBy>("q");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<DiscogsSearchResult[] | null>(null);
   const [hasToken, setHasToken] = useState(true);
