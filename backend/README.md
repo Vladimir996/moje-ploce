@@ -39,6 +39,7 @@ src/
 | DELETE | `/api/records/:id` | 🔒 Brisanje (briše i omot sa Cloudinary-ja ako ga ne koristi druga ploča) |
 | POST | `/api/uploads` | 🔒 Otpremanje omota (multipart, polje `cover`) → `{ url: "https://res.cloudinary.com/..." }` |
 | GET | `/api/discogs/search` | 🔒 Pretraga Discogs-a: `q` + `by` (`catno` · `barcode` · `q`) |
+| POST | `/api/discogs/identify` | 🔒 Prepoznavanje sa fotografije: `{ barcode, text, words }` → barkod → kataloški broj (OCR ispravke) → riječi; vraća `matchedBy`, `query`, `results` |
 | GET | `/api/discogs/releases/:id` | 🔒 Izdanje prevedeno u polja forme + omot prebačen na Cloudinary + `existingRecordId` ako već postoji |
 | GET | `/api/artists` | Izvođači sa brojem ploča |
 | GET | `/api/genres` | Žanrovi sa brojem ploča |

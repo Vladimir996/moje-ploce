@@ -47,6 +47,7 @@ Frontend se povezuje sa backend-om preko `frontend/.env.local` (`API_URL`), a ni
 
 **Admin (`/admin/login`, `/admin/nova`, `/admin/ploce/[id]`)**
 - **Uvoz sa Discogs-a**: pretraga po kataloškom broju, barkodu ili izvođaču/nazivu (ili nalijepi link izdanja) → forma se sama popuni (naziv, izvođač, godina, izdavač, kataloški broj, zemlja, format, brzina, žanrovi, pjesme), a omot se prebaci na Cloudinary. Upozorava ako to izdanje već imaš. Opciono `DISCOGS_TOKEN` u `backend/.env` za sličice u rezultatima i veći limit.
+- **Pretraga slikom (besplatno, u browseru)**: dugme „📷 Slikaj ploču” → čita se barkod (zxing-wasm) ili tekst sa etikete (Tesseract OCR, srpska latinica/ćirilica/engleski) → backend redom proba barkod, kataloški broj (sa ispravkom tipičnih OCR grešaka, npr. `15Y-10023` → `LSY-10023`) i najkrupnije pročitane riječi. Najbolje radi slika etikete izbliza ili bar-koda; rukopisna slova OCR ne čita.
 - Forma sa prijedlozima postojećih izvođača i žanrova (novi se kreiraju automatski)
 - Omot: otpremanje slike (do 8 MB) ili link do slike sa interneta
 - Dinamičan spisak pjesama (pozicija se sama predlaže: A1 → A2...)

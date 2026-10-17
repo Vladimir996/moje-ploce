@@ -1,9 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import type { DiscogsImport as DiscogsImportData, DiscogsSearchResult } from "@/lib/types";
+import { readPhoto, type Progress } from "@/lib/recognize";
 import Cover from "../Cover";
+
+const PROGRESS_LABELS: Record<Progress["step"], string> = {
+  barcode: "Tražim barkod...",
+  "ocr-load": "Učitavam prepoznavanje teksta (prvi put traje duže)...",
+  ocr: "Čitam tekst sa slike",
+};
+
+const MATCH_LABELS: Record<string, string> = {
+  barcode: "po barkodu",
+  catno: "po kataloškom broju",
+};
 
 type SearchBy = "catno" | "barcode" | "q";
 
@@ -25,6 +37,68 @@ export default function DiscogsImport({ onImport }: { onImport: (data: DiscogsIm
   const [importingId, setImportingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imported, setImported] = useState<DiscogsImportData | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoStatus, setPhotoStatus] = useState<string | null>(null);
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
+  const [photoWords, setPhotoWords] = useState<string[]>([]);
+
+  useEffect(() => () => void (photoUrl && URL.revokeObjectURL(photoUrl)), [photoUrl]);
+
+  async function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // da ista slika može ponovo da se izabere
+    if (!file) return;
+
+    setPhotoUrl(URL.createObjectURL(file));
+    setPhotoNote(null);
+    setPhotoWords([]);
+    setResults(null);
+    setImported(null);
+    setError(null);
+
+    try {
+      const reading = await readPhoto(file, (p) =>
+        setPhotoStatus(p.percent != null ? `${PROGRESS_LABELS[p.step]} ${p.percent}%` : PROGRESS_LABELS[p.step]),
+      );
+      setPhotoWords(reading.words.slice(0, 14));
+
+      setPhotoStatus("Tražim na Discogs-u...");
+      const res = await fetch("/api/admin/discogs/identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reading),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? "Pretraga nije uspjela.");
+
+      setResults(body.results);
+      setHasToken(body.hasToken);
+      if (body.matchedBy) {
+        setBy(body.matchedBy === "words" ? "q" : body.matchedBy);
+        setQuery(body.query);
+        setPhotoNote(
+          body.matchedBy === "words"
+            ? `Mogući pogoci po pročitanim riječima („${body.query}”) — provjeri da li je tvoja ploča među njima.`
+            : `Pronađeno ${MATCH_LABELS[body.matchedBy]}: „${body.query}”. Izaberi tačno izdanje.`,
+        );
+      } else {
+        setPhotoNote(
+          reading.words.length > 0
+            ? "Nisam uspio automatski da pronađem ploču. Klikni pročitane riječi da ih dodaš u pretragu, ili ukucaj sam."
+            : "Na slici nisam pročitao tekst. Slikaj etiketu izbliza, pri dobrom svjetlu i bez odsjaja.",
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Prepoznavanje slike nije uspjelo.");
+    } finally {
+      setPhotoStatus(null);
+    }
+  }
+
+  function addWord(word: string) {
+    setBy("q");
+    setQuery((prev) => (prev && by === "q" ? `${prev} ${word}` : word));
+  }
 
   async function search() {
     const value = query.trim();
@@ -118,6 +192,51 @@ export default function DiscogsImport({ onImport }: { onImport: (data: DiscogsIm
           {searching ? "Tražim..." : "Traži"}
         </button>
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <label
+          className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border border-paper-50/25 px-4 py-2 text-sm font-semibold transition-colors hover:bg-paper-50/10 ${
+            photoStatus ? "pointer-events-none opacity-50" : ""
+          }`}
+        >
+          <span aria-hidden>📷</span> Slikaj ploču
+          {/* capture="environment" na telefonu odmah otvara zadnju kameru; na računaru bira fajl */}
+          <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="sr-only" />
+        </label>
+        <span className="text-xs text-paper-50/50">
+          Najbolje radi slika etikete izbliza (kataloški broj) ili bar-koda sa zadnje strane omota.
+        </span>
+      </div>
+
+      {(photoUrl && (photoStatus || photoNote || photoWords.length > 0)) && (
+        <div className="mt-4 flex gap-4 rounded-xl bg-paper-50/5 p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photoUrl} alt="Slika ploče" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+          <div className="min-w-0 flex-1 text-sm">
+            {photoStatus && (
+              <p className="flex items-center gap-2 text-paper-50/80">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-paper-50/30 border-t-vinyl-600" />
+                {photoStatus}
+              </p>
+            )}
+            {photoNote && <p className="text-paper-50/80">{photoNote}</p>}
+            {photoWords.length > 0 && !photoStatus && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {photoWords.map((word) => (
+                  <button
+                    key={word}
+                    type="button"
+                    onClick={() => addWord(word)}
+                    className="rounded-full border border-paper-50/20 px-2.5 py-0.5 text-xs hover:border-paper-50 hover:bg-paper-50/10"
+                  >
+                    + {word}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && <p className="mt-3 rounded-xl bg-vinyl-600/20 px-4 py-2.5 text-sm text-paper-50">{error}</p>}
 

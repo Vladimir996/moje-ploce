@@ -37,16 +37,17 @@ async function searchReleases(req, res) {
   const by = req.query.by;
   if (!query) return res.status(400).json({ error: "Unesi šta tražiš." });
 
-  const params = { type: "release", format: "Vinyl", per_page: "24" };
-  if (by === "catno") params.catno = query;
-  else if (by === "barcode") params.barcode = query.replace(/\s+/g, "");
-  else params.q = query;
+  const field = by === "catno" ? "catno" : by === "barcode" ? "barcode" : "q";
+  const value = by === "barcode" ? query.replace(/\s+/g, "") : query;
+  const { total, results } = await searchDiscogs({ [field]: value });
 
-  const data = await discogsGet("/database/search", params);
+  res.json({ total, hasToken: Boolean(process.env.DISCOGS_TOKEN), results });
+}
 
-  res.json({
+async function searchDiscogs(params) {
+  const data = await discogsGet("/database/search", { type: "release", format: "Vinyl", per_page: "24", ...params });
+  return {
     total: data.pagination?.items ?? 0,
-    hasToken: Boolean(process.env.DISCOGS_TOKEN),
     results: (data.results ?? []).map((r) => {
       // Naslov u pretrazi je "Izvođač - Naziv"
       const [artist, ...titleParts] = String(r.title ?? "").split(" - ");
@@ -62,7 +63,90 @@ async function searchReleases(req, res) {
         thumb: r.thumb || null,
       };
     }),
-  });
+  };
+}
+
+// Prepoznavanje ploče sa fotografije: browser pročita barkod i tekst (OCR),
+// a ovdje se redom probaju barkod → kataloški broj → krupne riječi.
+// Discogs pretraga je stroga (jedna pogrešna riječ = 0 rezultata), zato se
+// ispravljaju tipične OCR greške i probaju manji skupovi riječi.
+async function identifyRelease(req, res) {
+  const barcode = String(req.body?.barcode ?? "").replace(/\D/g, "");
+  const text = String(req.body?.text ?? "").slice(0, 5000);
+  const words = Array.isArray(req.body?.words) ? req.body.words.map(String).slice(0, 40) : [];
+  const respond = (matchedBy, query, found) =>
+    res.json({ matchedBy, query, hasToken: Boolean(process.env.DISCOGS_TOKEN), ...found });
+
+  if (barcode.length >= 8) {
+    const found = await searchDiscogs({ barcode });
+    if (found.total > 0) return respond("barcode", barcode, found);
+  }
+
+  for (const catno of catalogNumberCandidates(text).slice(0, 3)) {
+    const found = await searchDiscogs({ catno });
+    if (found.total > 0) return respond("catno", catno, found);
+  }
+
+  // Najkrupnije riječi su obično naslov/izvođač, ali i logo ili stilizovana slova koja OCR
+  // pogrešno pročita — zato se probaju i skupovi koji preskaču prvu, pa prve dvije riječi.
+  const keywords = [...new Set(words.map((w) => w.trim()).filter(isKeyword).map((w) => w.toLowerCase()))];
+  const attempts = [keywords.slice(0, 5), keywords.slice(0, 3), keywords.slice(1, 4), keywords.slice(2, 5)];
+  const tried = new Set();
+  for (const subset of attempts) {
+    const q = subset.join(" ");
+    // Premalo teksta daje nasumične pogotke ("boi male" → bilo šta) — traži 3 riječi ili 2 duže
+    const enough = subset.length >= 3 || (subset.length === 2 && subset.every((w) => w.length >= 5));
+    if (!enough || tried.has(q)) continue;
+    tried.add(q);
+    const found = await searchDiscogs({ q });
+    if (found.total > 0) return respond("words", q, found);
+  }
+
+  respond(null, null, { total: 0, results: [] });
+}
+
+// OCR često zamijeni slova i cifre u prefiksu kataloškog broja ("15Y-10023" umjesto "LSY-10023")
+const PREFIX_FIXES = { 0: ["O"], 1: ["L", "I"], 2: ["Z"], 5: ["S"], 6: ["G"], 8: ["B"] };
+const NOT_CATNO = new Set(["ST", "P", "C", "SIDE", "STRANA", "RPM"]);
+
+function catalogNumberCandidates(text) {
+  const candidates = [];
+  const re = /\b([A-Z0-9]{1,5})[\s.-]?(\d{1,6})\b/gi;
+  for (const [, rawPrefix, number] of text.toUpperCase().matchAll(re)) {
+    // Prefiks mora imati bar jedno slovo ili biti "pokvaren" OCR-om (cifre koje liče na slova)
+    if (!/[A-Z]/.test(rawPrefix) && !/^[0-9]{1,5}$/.test(rawPrefix)) continue;
+    if (/^\d+$/.test(rawPrefix) && /^\d{4}$/.test(number) && /^(19|20)/.test(number)) continue; // "(P) 1984"
+    if (number.length < 3 && rawPrefix.length < 3) continue;
+
+    const variants = prefixVariants(rawPrefix).filter((p) => /[A-Z]{2}/.test(p) && !NOT_CATNO.has(p));
+    for (const prefix of variants) candidates.push(`${prefix}-${number}`, `${prefix} ${number}`);
+  }
+  // Sa crticom i dužim brojem su vjerovatniji; bez duplikata
+  return [...new Set(candidates)].sort((a, b) => b.length - a.length);
+}
+
+function prefixVariants(prefix) {
+  let variants = [""];
+  for (const ch of prefix) {
+    const options = PREFIX_FIXES[ch] ? [ch, ...PREFIX_FIXES[ch]] : [ch];
+    variants = variants.flatMap((v) => options.map((o) => v + o));
+    if (variants.length > 16) break;
+  }
+  // Prvo varijante sa najviše slova (najvjerovatnije ispravljene)
+  return variants.sort((a, b) => (b.match(/[A-Z]/g) ?? []).length - (a.match(/[A-Z]/g) ?? []).length);
+}
+
+// Standardni tekst sa jugoslovenskih (i stranih) etiketa koji ne pomaže pretrazi
+const LABEL_BOILERPLATE = new Set(
+  `stereo mono strana side sva prava proizvođača proizvodjaca vlasnika snimljenog djela dela su pridržana
+  pridrzana zabranjeno umnožavanje umnozavanje ove ploče ploce korišćenje koriscenje korišćenje za javno
+  izvođenje izvodjenje radio difuziju difuzija aranžman aranžmani aranzman producent produkcija snimljeno
+  tekst muzika made yugoslavia jugoslavija jugoton diskoton suzy sokoj zamp rights reserved all record
+  records unauthorized copying public performance broadcasting prohibited the and play speed`.split(/\s+/),
+);
+
+function isKeyword(word) {
+  return /^[\p{L}]{3,}$/u.test(word) && !LABEL_BOILERPLATE.has(word.toLowerCase());
 }
 
 // Vraća podatke izdanja spremne za formu + skida omot na naš server.
@@ -194,4 +278,4 @@ function handleDiscogsError(err, req, res, next) {
   next(err);
 }
 
-module.exports = { searchReleases, importRelease, handleDiscogsError };
+module.exports = { searchReleases, importRelease, identifyRelease, handleDiscogsError };
